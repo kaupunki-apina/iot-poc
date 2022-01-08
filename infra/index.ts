@@ -1,6 +1,8 @@
 import * as cdk from "@aws-cdk/core";
 import { z } from "zod";
-import { Stack } from "./stack";
+import { VpcStack } from "./vpc-stack";
+import { DbStack } from "./db-stack";
+import { LambdaStack } from "./lambda-stack";
 
 const configSchema = z.object({
   CDK_DEFAULT_REGION: z.string(),
@@ -12,8 +14,25 @@ const configSchema = z.object({
 const config = configSchema.parse(process.env);
 
 const app = new cdk.App();
-new Stack(app, "iot-poc-stack", {
-  stackName: "iot-poc-stack",
+
+const vpcStack = new VpcStack(app, "iot-poc-vpc-stack", {
+  env: {
+    region: config.CDK_REGION ?? config.CDK_DEFAULT_REGION,
+    account: config.CDK_ACCOUNT ?? config.CDK_DEFAULT_ACCOUNT,
+  },
+});
+
+const dbStack = new DbStack(app, "iot-poc-db-stack", {
+  vpc: vpcStack.vpc,
+  env: {
+    region: config.CDK_REGION ?? config.CDK_DEFAULT_REGION,
+    account: config.CDK_ACCOUNT ?? config.CDK_DEFAULT_ACCOUNT,
+  },
+});
+
+const lambdaStack = new LambdaStack(app, "iot-poc-lambda-stack", {
+  vpc: vpcStack.vpc,
+  databaseUrl: dbStack.databaseUrl,
   env: {
     region: config.CDK_REGION ?? config.CDK_DEFAULT_REGION,
     account: config.CDK_ACCOUNT ?? config.CDK_DEFAULT_ACCOUNT,
