@@ -2,6 +2,7 @@ import * as cdk from "@aws-cdk/core";
 import { z } from "zod";
 import { VpcStack } from "./vpc-stack";
 import { DbStack } from "./db-stack";
+import { MigrationStack } from "./migration-stack";
 import { LambdaStack } from "./lambda-stack";
 
 const configSchema = z.object({
@@ -24,6 +25,19 @@ const vpcStack = new VpcStack(app, "iot-poc-vpc-stack", {
 
 const dbStack = new DbStack(app, "iot-poc-db-stack", {
   vpc: vpcStack.vpc,
+  env: {
+    region: config.CDK_REGION ?? config.CDK_DEFAULT_REGION,
+    account: config.CDK_ACCOUNT ?? config.CDK_DEFAULT_ACCOUNT,
+  },
+});
+
+const migrationStack = new MigrationStack(app, "iot-poc-db-migration-stack", {
+  vpc: vpcStack.vpc,
+  host: dbStack.host,
+  port: dbStack.port,
+  user: dbStack.user,
+  password: dbStack.password,
+  database: dbStack.database,
   env: {
     region: config.CDK_REGION ?? config.CDK_DEFAULT_REGION,
     account: config.CDK_ACCOUNT ?? config.CDK_DEFAULT_ACCOUNT,

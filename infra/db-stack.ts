@@ -10,6 +10,11 @@ interface Props extends cdk.StackProps {
 
 export class DbStack extends cdk.Stack {
   databaseUrl: string;
+  host: string;
+  port: string;
+  user: string;
+  password: string;
+  database: string;
 
   constructor(scope: cdk.App, id: string, props: Props) {
     super(scope, id, props);
@@ -39,6 +44,11 @@ export class DbStack extends cdk.Stack {
 
     database.connections.allowFromAnyIpv4(ec2.Port.tcp(5432));
 
+    this.user = dbUser.secretValueFromJson("username")?.toString();
+    this.password = dbUser.secretValueFromJson("password")?.toString();
+    this.host = database.instanceEndpoint.hostname;
+    this.port = database.dbInstanceEndpointPort;
+    this.database = databaseName;
     this.databaseUrl = postgresUrl({
       user: dbUser.secretValueFromJson("username")?.toString(),
       pass: dbUser.secretValueFromJson("password")?.toString(),
