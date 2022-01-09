@@ -32,7 +32,12 @@ export class DbStack extends cdk.Stack {
       credentials: databaseCredentials,
       databaseName,
       vpc: props.vpc,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PUBLIC,
+      },
     });
+
+    database.connections.allowFromAnyIpv4(ec2.Port.tcp(5432));
 
     this.databaseUrl = postgresUrl({
       user: dbUser.secretValueFromJson("username")?.toString(),
