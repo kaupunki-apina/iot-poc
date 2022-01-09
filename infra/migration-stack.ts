@@ -6,7 +6,6 @@ import * as logs from "@aws-cdk/aws-logs";
 import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
 import { DockerImageAsset } from "@aws-cdk/aws-ecr-assets";
-import { Vpc } from "@aws-cdk/aws-ec2";
 
 interface Props extends cdk.StackProps {
   vpc: ec2.Vpc;
@@ -22,7 +21,6 @@ export class MigrationStack extends cdk.Stack {
     super(scope, id, props);
 
     const cluster = new ecs.Cluster(this, "Ec2Cluster", { vpc: props.vpc });
-
     cluster.addCapacity("DefaultAutoScalingGroup", {
       instanceType: new ec2.InstanceType("t3.micro"),
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
@@ -42,8 +40,9 @@ export class MigrationStack extends cdk.Stack {
       directory: path.join(__dirname, "../migrations"),
     });
 
-    migrationTaskDefinition
-      .addContainer("MigrationContainer", {
+    const migrationContainer = migrationTaskDefinition.addContainer(
+      "MigrationContainer",
+      {
         image: ecs.ContainerImage.fromDockerImageAsset(migrationImage),
         environment: {
           FLYWAY_URL: `jdbc:postgresql://${props.host}:${props.port}/${props.database}?sslmode=require`,
@@ -55,23 +54,17 @@ export class MigrationStack extends cdk.Stack {
           streamPrefix: "Migration logs",
           logRetention: logs.RetentionDays.ONE_WEEK,
         }),
-      })
-      .addPortMappings({
-        containerPort: 8000,
-      });
+      }
+    );
+    migrationContainer.addPortMappings({
+      containerPort: 8000,
+    });
 
     const runTask = new tasks.EcsRunTask(this, "Run migrations", {
       integrationPattern: sfn.IntegrationPattern.RUN_JOB,
       cluster,
       taskDefinition: migrationTaskDefinition,
-      launchTarget: new tasks.EcsEc2LaunchTarget({
-        placementStrategies: [
-          ecs.PlacementStrategy.spreadAcrossInstances(),
-          ecs.PlacementStrategy.packedByCpu(),
-          ecs.PlacementStrategy.randomly(),
-        ],
-        placementConstraints: [ecs.PlacementConstraint.memberOf("blieptuut")],
-      }),
+      launchTarget: new tasks.EcsFargateLaunchTarget(),
     });
   }
 }
