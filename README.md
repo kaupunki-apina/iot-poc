@@ -19,3 +19,6 @@ npm run cdk:deploy
 ```bash
 npm run cdk:destroy # Destroys all AWS resources created by this project
 ```
+
+## Architecture
+![architecture](assets/architecture.svg)
