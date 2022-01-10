@@ -2,6 +2,7 @@ import * as lambda from "@aws-cdk/aws-lambda";
 import * as ec2 from "@aws-cdk/aws-ec2";
 import { NodejsFunction } from "@aws-cdk/aws-lambda-nodejs";
 import * as cdk from "@aws-cdk/core";
+import * as apigateway from "@aws-cdk/aws-apigateway";
 import * as path from "path";
 import { IConfig as IotEventHandlerConfig } from "../lambda/iot-event-handler/config";
 
@@ -18,6 +19,11 @@ export class LambdaStack extends cdk.Stack {
       DATABASE_URL: props.databaseUrl,
     };
 
+    const api = new apigateway.RestApi(this, "widgets-api", {
+      restApiName: "Iot poc",
+      description: "IoT event handlers.",
+    });
+
     const eventHandler = new NodejsFunction(this, "iot-event-handler", {
       memorySize: 1024,
       timeout: cdk.Duration.seconds(5),
@@ -31,5 +37,14 @@ export class LambdaStack extends cdk.Stack {
       environment: eventHandlerEnvironment,
       vpc: props.vpc,
     });
+
+    const eventHandlerIntegration = new apigateway.LambdaIntegration(
+      eventHandler,
+      {
+        requestTemplates: { "application/json": '{ "statusCode": "200" }' },
+      }
+    );
+
+    api.root.addMethod("POST", eventHandlerIntegration);
   }
 }

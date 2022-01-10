@@ -5,6 +5,7 @@ import * as ecs from "@aws-cdk/aws-ecs";
 import * as logs from "@aws-cdk/aws-logs";
 import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
+import * as autoscaling from "@aws-cdk/aws-autoscaling";
 import { DockerImageAsset } from "@aws-cdk/aws-ecr-assets";
 
 interface Props extends cdk.StackProps {
@@ -21,11 +22,24 @@ export class MigrationStack extends cdk.Stack {
     super(scope, id, props);
 
     const cluster = new ecs.Cluster(this, "Ec2Cluster", { vpc: props.vpc });
-    cluster.addCapacity("DefaultAutoScalingGroup", {
+
+    const autoScalingGroup = new autoscaling.AutoScalingGroup(this, "ASG", {
+      vpc: props.vpc,
       instanceType: new ec2.InstanceType("t3.micro"),
-      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-      machineImage: ecs.EcsOptimizedImage.amazonLinux(),
+      machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
+      minCapacity: 0,
+      maxCapacity: 1,
     });
+
+    const capacityProvider = new ecs.AsgCapacityProvider(
+      this,
+      "Migrations asg",
+      {
+        autoScalingGroup,
+      }
+    );
+
+    cluster.addAsgCapacityProvider(capacityProvider);
 
     const migrationTaskDefinition = new ecs.FargateTaskDefinition(
       this,
